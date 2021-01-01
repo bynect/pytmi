@@ -149,7 +149,7 @@ class TmiClient(TmiBaseClient):
             return False
 
         if self.__joined_channel != None:
-            self.part(self.__joined_channel)
+            self.part()
 
         return self.__connection.disconnect()
 
@@ -213,45 +213,43 @@ class TmiClient(TmiBaseClient):
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        channel = "JOIN " + channel + "\r\n"
-        self.__connection.send(channel.encode())
-
         self.__joined_channel = channel
+
+        command = "JOIN " + channel + "\r\n"
+        self.__connection.send(command.encode())
+
         return True
 
-    def part(self, channel: str) -> bool:
+    def part(self, channel: Optional[str] = None) -> bool:
         """Send the PART command to the server to leave `channel`."""
 
         if not self.__connection.connected:
             return False
 
+        if channel == None:
+            channel = self.__joined_channel
+
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        channel = "PART " + channel + "\r\n"
-        self.__connection.send(channel.encode())
-
         self.__joined_channel = None
+
+        command = "PART " + channel + "\r\n"
+        self.__connection.send(command.encode())
+
         return True
 
-    def privmsg(self, channel: str, message: str, trunc: bool = False) -> bool:
+    def privmsg(self, message: str, channel: Optional[str] = None) -> None:
         """Send the PRIVMSG command to the server to send `message` in `channel`."""
 
         if not self.__connection.connected:
             return False
 
+        if channel == None:
+            channel = self.__joined_channel
+
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        message = "PRIVMSG " + channel + message + "\r\n"
-        message = message.encode()
-
-        if len(message) >= MAX_MSGSIZE:
-            if trunc:
-                message = message[:MAX_MSGSIZE]
-            else:
-                return False
-
-        self.__connection.send(message)
-
-        return True
+        command = "PRIVMSG " + channel + " :" + message + "\r\n"
+        self.__connection.send(command.encode())
