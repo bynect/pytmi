@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from pytmi import __version__ as version
 
 
-description = """TMI (Twitch Messaging Interface) protocol library for Python."""
+description = """TMI (Twitch Messaging Interface) library for Python."""
 
 
 project_url = "https://github.com/bynect/pytmi"
