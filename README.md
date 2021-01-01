@@ -1,9 +1,9 @@
 # pytmi
 
-![package_version](https://img.shields.io/pypi/v/pytmi)
-![license](https://img.shields.io/pypi/l/pytmi)
-![python_version](https://img.shields.io/pypi/pyversions/pytmi)
-![wheel](https://img.shields.io/pypi/wheel/pytmi)
+[![package_version](https://img.shields.io/pypi/v/pytmi)](https://pypi.org/project/pytmi/)
+[![license](https://img.shields.io/pypi/l/pytmi)](https://choosealicense.com/licenses/mit/#)
+[![python_version](https://img.shields.io/pypi/pyversions/pytmi)](https://www.python.org/)
+[![wheel](https://img.shields.io/pypi/wheel/pytmi)](https://pypi.org/project/pytmi/)
 
 TMI (Twitch Messaging Interface) library for Python.
 
