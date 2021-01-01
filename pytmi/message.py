@@ -16,7 +16,12 @@ class TmiMessage(object):
         self.__raw: str = message
         self.__left: Optional[str] = None
 
-        self.__parse_raw()
+        self.__parsed: bool = False
+
+        try:
+            self.__parse_raw()
+        except:
+            self.__left = self.__raw
 
     def __parse_raw(self) -> None:
         """Parse the raw message and populate the `tags`, `net` and `command` properties."""
@@ -31,9 +36,11 @@ class TmiMessage(object):
 
         temp = raw.split("\r\n", 1)
         if len(temp) > 1:
-            self.__left = temp[1:]
+            self.__left = temp[1]
 
         self.__command = temp[0].lstrip()
+
+        self.__parsed = True
 
     def __parse_tags(self, tags: str) -> None:
         """Parse the given tags populating the `tags` property with a key-value dict."""
@@ -57,7 +64,7 @@ class TmiMessage(object):
             self.__tags[key] = norm
 
     @property
-    def raw(self) -> str:
+    def raw(self) -> Optional[str]:
         """Return the raw message string, aka the original input string."""
         return self.__raw
 
@@ -67,11 +74,21 @@ class TmiMessage(object):
         return self.__tags
 
     @property
-    def net(self) -> str:
+    def net(self) -> Optional[str]:
         """Return a string containing the address part of the message."""
         return self.__net
 
     @property
-    def command(self) -> str:
+    def command(self) -> Optional[str]:
         """Return a string containing the command part of the message."""
         return self.__command
+
+    @property
+    def left(self) -> Optional[str]:
+        """Return a string containing the unparsed part of the message."""
+        return self.__left
+
+    @property
+    def parsed(self) -> bool:
+        """Compare message properties."""
+        return self.__parsed

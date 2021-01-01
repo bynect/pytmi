@@ -16,7 +16,7 @@ def main(channel: str) -> None:
         try:
             msg = tmi.get_message()
 
-            if msg == None:
+            if msg == None or not msg.parsed:
                 continue
 
             if "JOIN" in msg.command or "PART" in msg.command:

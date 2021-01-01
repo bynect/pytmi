@@ -11,6 +11,7 @@ from pytmi.message import *
 TMI_REQMEMBERSHIP = b"CAP REQ :twitch.tv/membership\r\n"
 TMI_REQTAGS = b"CAP REQ :twitch.tv/tags\r\n"
 TMI_REQCOMMANDS = b"CAP REQ :twitch.tv/commands\r\n"
+
 TMI_REQACK = "CAP * ACK"
 
 
