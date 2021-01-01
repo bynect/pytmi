@@ -52,7 +52,7 @@ def main(channel: str) -> None:
 
 if __name__ == "__main__":
     try:
-        channel = input("Insert the twitch channel to join: ")
+        channel = input("Insert the channel to join: ")
         main(channel.lstrip())
     except KeyboardInterrupt:
         sys.exit()
