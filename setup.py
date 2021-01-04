@@ -8,6 +8,13 @@ description = """TMI (Twitch Messaging Interface) library for Python."""
 project_url = "https://github.com/bynect/pytmi"
 
 
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+
 with open("README.md") as f:
     readme = f.read()
 
@@ -21,11 +28,7 @@ setup_info = {
     "long_description_content_type": "text/markdown",
     "url": project_url,
     "packages": find_packages(),
-    "classifiers": [
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
+    "classifiers": classifiers,
     "python_requires": '>= 3.6',
 }
 

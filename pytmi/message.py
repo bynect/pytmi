@@ -92,3 +92,8 @@ class TmiMessage(object):
     def parsed(self) -> bool:
         """Compare message properties."""
         return self.__parsed
+
+
+__all__ = [
+    "TmiMessage",
+]

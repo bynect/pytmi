@@ -253,3 +253,9 @@ class TmiClient(TmiBaseClient):
 
         command = "PRIVMSG " + channel + " :" + message + "\r\n"
         self.__connection.send(command.encode())
+
+
+__all__ = [
+    "TmiBaseClient",
+    "TmiClient",
+]

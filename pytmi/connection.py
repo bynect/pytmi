@@ -138,5 +138,5 @@ __all__ = [
     "TmiConnection",
     "TmiSslConnection",
     "MAX_MSGSIZE",
-    "MAX_BUFSIZE"
+    "MAX_BUFSIZE",
 ]
