@@ -40,7 +40,7 @@ class TmiClient(TmiBaseClient):
         else:
             connection_class = connection
 
-        self.__connection = connection_class()
+        self.__connection = connection_class(TMI_SERVER, TMI_SERVER_SSLPORT if ssl else TMI_SERVER_PORT)
 
         self.__joined_channel: Optional[str] = None
 
