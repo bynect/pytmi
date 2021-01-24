@@ -1,23 +1,10 @@
-import time
-import random
 import abc
-from typing import Type, Optional, List
+from typing import Optional, Type
+import random
+import asyncio
+import ssl
 
-from pytmi.connection import *
-from pytmi.message import *
-
-
-# Twitch IRC extensions `https://dev.twitch.tv/docs/irc/guide#twitch-irc-capabilities`
-TMI_REQMEMBERSHIP = b"CAP REQ :twitch.tv/membership\r\n"
-TMI_REQTAGS = b"CAP REQ :twitch.tv/tags\r\n"
-TMI_REQCOMMANDS = b"CAP REQ :twitch.tv/commands\r\n"
-
-TMI_REQACK = "CAP * ACK"
-
-
-# Every 5 minutes the server send a PING and expect a PONG
-PING_MESSAGE = "PING :tmi.twitch.tv\r\n"
-PONG_MESSAGE = "PONG :tmi.twitch.tv\r\n"
+from pytmi.stream import *
 
 
 # Default client limits
@@ -26,43 +13,29 @@ MAX_RETRY = 8
 
 
 class TmiBaseClient(abc.ABC):
-    """Base client for TMI connection."""
+    """Base Client for handling IRC-TMI streams and messages."""
 
 
 class TmiClient(TmiBaseClient):
-    """Client for TMI connection."""
+    """Asynchronous client for handling IRC-TMI streams and messages."""
 
-    def __init__(self, ssl: bool = False, connection: Optional[Type[TmiBaseConnection]] = None):
-        self.__ssl: bool = ssl
-
-        if connection == None:
-            connection_class = TmiSslConnection if ssl else TmiConnection
+    def __init__(
+        self, ssl: bool = True, stream: Optional[Type[TmiBaseStream]] = None
+    ) -> None:
+        if stream == None:
+            self.__stream_type = TmiStream
         else:
-            connection_class = connection
+            self.__stream_type = stream
 
-        self.__connection = connection_class(TMI_SERVER, TMI_SERVER_SSLPORT if ssl else TMI_SERVER_PORT)
+        self.__ssl = ssl
+        self.__stream = self.__stream_type()
 
-        self.__joined_channel: Optional[str] = None
+        self.__logged: bool = False
+        self.__joined: Optional[str] = None
 
-        self.__message_buffer: List[str] = []
-
-        if ssl:
-            raise NotImplementedError("SSL is currently not implemented.")
-
-    def login_oauth(self, token: str, nick: str, retry: int = MAX_RETRY) -> bool:
-        """Create a connection to Twitch and authenticate you using the oauth tokens.
-
-        `token` is the oauth token of your Twitch account.
-        `nick` is your Twitch username.
-
-        If you prefer an anonymous login you can use the `login_anonymous` method.
-
-        Return `True` if the operation succeeded, `False` otherwise.
-        If the login fail, it will be reattempted `retry` times before returning.
-        """
-
-        if self.__connection.connected:
-            return False
+    async def login_oauth(self, token: str, nick: str, retry: int = MAX_RETRY) -> None:
+        if self.__logged:
+            raise AttributeError("Alredy logged in")
 
         if not token.startswith("oauth:"):
             token = "oauth:" + token
@@ -70,145 +43,102 @@ class TmiClient(TmiBaseClient):
         nick = nick.lower()
 
         if retry < 0:
-            retry = -retry
+            retry = MAX_RETRY
 
         backoff = 0
-        for r in range(retry):
+
+        for _ in range(retry):
             try:
-                if self.__login(token, nick):
-                    return True
-            except Exception as e:
-                if isinstance(e, OSError):
-                    raise
+                await self.__login(token, nick)
+                return
+            except OSError:
+                raise
 
             if backoff <= 1:
                 backoff += 1
             else:
                 backoff *= 2
-                time.sleep(backoff / 1.5)
+                await asyncio.sleep(backoff / 1.5)
 
-        return False
+        raise ConnectionError("Connection failed")
 
-    def login_anonymous(self) -> bool:
-        """Create a connection to Twitch without authentication."""
+    async def login_anonymous(self, retry: int = MAX_RETRY) -> None:
+        token = "random_string"
+        nick = "justinfan" + str(random.randint(12345, 67890))
+        await self.login_oauth(token, nick, retry=retry)
 
-        if self.__connection.connected:
-            return False
+    async def __login(self, token: str, nick: str) -> None:
+        if self.__ssl:
+            await self.__stream.connect(
+                TMI_SERVER, TMI_SERVER_SSLPORT, ssl_ctx=ssl.create_default_context()
+            )
+        else:
+            await self.__stream.connect(TMI_SERVER, TMI_SERVER_PORT)
 
-        for r in range(MAX_RETRY):
-            token = "random_string"
-            nick = "justinfan" + str(r) + str(random.randint(123, 456))
-
-            if self.login_oauth(token, nick):
-                return True
-
-        return False
-
-    def __login(self, token: str, nick: str) -> bool:
-        """Internal login method, use `login_oauth` or `login_anonymous`."""
-
-        if not self.__connection.connect():
-            return False
-
-        # Authenticate using oauth token and nick
-        token = "PASS " + token + "\r\n"
-        nick = "NICK " + nick.lower() + "\r\n"
-
-        self.__connection.send(token.encode())
-        self.__connection.send(nick.encode())
-
-        if self.__connection.bytes_sent <= 0:
-            return False
-
-        buf = self.__connection.recv()
-
-        if not buf.decode().find(":Welcome, GLHF!"):
-            return False
-
-        # Enables TMI extensions over the IRC protocol
-        self.__connection.send(TMI_REQMEMBERSHIP)
-        self.__connection.send(TMI_REQTAGS)
-        self.__connection.send(TMI_REQCOMMANDS)
-
-        buf = self.__connection.recv()
-
-        if not buf.decode().find(TMI_REQACK):
-            return False
-
-        self.__message_buffer.clear()
-
-        return True
-
-    def logout(self) -> bool:
-        """Terminate the established connection to Twitch and logout.
-
-        Send the PART command if called when a JOIN was used.
-        """
-
-        if not self.__connection.connected:
-            return False
-
-        if self.__joined_channel != None:
-            self.part()
-
-        return self.__connection.disconnect()
-
-    def __del__(self) -> None:
-        """Logout automatically when TmiClient is disposed."""
+        pass_command = "PASS " + token + "\r\n"
+        nick_command = "NICK " + nick.lower() + "\r\n"
 
         try:
-            self.logout()
-        except:
-            pass
+            await self.__stream.write_buf(pass_command.encode())
+            await self.__stream.write_buf(nick_command.encode())
 
-    def get_string(self) -> Optional[str]:
-        """Get the current buffered message as a string."""
+            welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
+            assert await self.__stream.read_buf() == welcome1.encode()
 
-        ### XXX ###
+            welcome2 = f":tmi.twitch.tv 002 {nick} :Your host is tmi.twitch.tv\r\n"
+            assert await self.__stream.read_buf() == welcome2.encode()
 
-        if not self.__connection.connected:
-            return
+            welcome3 = f":tmi.twitch.tv 003 {nick} :This server is rather new\r\n"
+            assert await self.__stream.read_buf() == welcome3.encode()
 
-        if len(self.__message_buffer) == 0:
-            buf = self.__connection.recv()
+            welcome4 = f":tmi.twitch.tv 004 {nick} :-\r\n"
+            assert await self.__stream.read_buf() == welcome4.encode()
 
-            try:
-                buf = buf.decode()
-            except:
-                return
+            welcome5 = f":tmi.twitch.tv 375 {nick} :-\r\n"
+            assert await self.__stream.read_buf() == welcome5.encode()
 
-            if PING_MESSAGE in buf:
-                self.__connection.send(PONG_MESSAGE.encode())
-                buf = buf.replace(PING_MESSAGE, "")
+            welcome6 = f":tmi.twitch.tv 372 {nick} :You are in a maze of twisty passages, all alike.\r\n"
+            assert await self.__stream.read_buf() == welcome6.encode()
 
-            message_list = buf.split("\r\n")
-            message_list = [m for m in message_list if TMI_REQACK not in m]
+            welcome7 = f":tmi.twitch.tv 376 {nick} :>\r\n"
+            assert await self.__stream.read_buf() == welcome7.encode()
 
-            self.__message_buffer.extend(message_list)
+            req1 = b"CAP REQ :twitch.tv/membership\r\n"
+            await self.__stream.write_buf(req1)
 
-            if len(self.__message_buffer) == 0:
-                return self.get()
+            ack1 = b":tmi.twitch.tv CAP * ACK :twitch.tv/membership\r\n"
+            assert await self.__stream.read_buf() == ack1
 
-        return self.__message_buffer.pop(0)
+            req2 = b"CAP REQ :twitch.tv/commands\r\n"
+            await self.__stream.write_buf(req2)
 
-    def get_message(self) -> Optional[TmiMessage]:
-        """Get the current buffered message as a parsed TmiMessage instance."""
+            ack2 = b":tmi.twitch.tv CAP * ACK :twitch.tv/commands\r\n"
+            assert await self.__stream.read_buf() == ack2
 
-        if not self.__connection.connected:
-            return
+            req3 = b"CAP REQ :twitch.tv/tags\r\n"
+            await self.__stream.write_buf(req3)
 
-        message = self.get_string()
+            ack3 = b":tmi.twitch.tv CAP * ACK :twitch.tv/tags\r\n"
+            assert await self.__stream.read_buf() == ack3
 
-        if message == None or message == "":
-            return
+        except AssertionError:
+            raise ConnectionError("Login failed")
 
-        return TmiMessage(message)
+        self.__logged = True
 
-    def join(self, channel: str) -> bool:
-        """Send the JOIN command to the server to join `channel`."""
+    async def logout(self) -> None:
+        if not self.__logged:
+            raise AttributeError("Not logged in")
 
-        if not self.__connection.connected:
-            return False
+        if self.__joined != None:
+            self.part(self.__joined)
+
+        await self.__stream.disconnect()
+        self.__logged = False
+
+    async def join(self, channel: str) -> None:
+        if not self.__logged:
+            raise AttributeError("Not logged in")
 
         if not channel.startswith("#"):
             channel = "#" + channel
@@ -216,15 +146,11 @@ class TmiClient(TmiBaseClient):
         self.__joined_channel = channel
 
         command = "JOIN " + channel + "\r\n"
-        self.__connection.send(command.encode())
+        await self.__stream.write_buf(command.encode())
 
-        return True
-
-    def part(self, channel: Optional[str] = None) -> bool:
-        """Send the PART command to the server to leave `channel`."""
-
-        if not self.__connection.connected:
-            return False
+    async def part(self, channel: Optional[str] = None) -> None:
+        if not self.__logged:
+            raise AttributeError("Not logged in")
 
         if channel == None:
             channel = self.__joined_channel
@@ -235,15 +161,11 @@ class TmiClient(TmiBaseClient):
         self.__joined_channel = None
 
         command = "PART " + channel + "\r\n"
-        self.__connection.send(command.encode())
+        await self.__stream.write_buf(command.encode())
 
-        return True
-
-    def privmsg(self, message: str, channel: Optional[str] = None) -> None:
-        """Send the PRIVMSG command to the server to send `message` in `channel`."""
-
-        if not self.__connection.connected:
-            return False
+    async def send_privmsg(self, message: str, channel: Optional[str] = None) -> None:
+        if not self.__logged:
+            raise AttributeError("Not logged in")
 
         if channel == None:
             channel = self.__joined_channel
@@ -252,7 +174,23 @@ class TmiClient(TmiBaseClient):
             channel = "#" + channel
 
         command = "PRIVMSG " + channel + " :" + message + "\r\n"
-        self.__connection.send(command.encode())
+        await self.__stream.write_buf(command.encode())
+
+    async def get_privmsg(self) -> str:
+        if not self.__logged:
+            raise AttributeError("Not logged in")
+
+        line = await self.__stream.read_buf()
+
+        if line == b"PING :tmi.twitch.tv\r\n":
+            self.__stream.write_buf(b"PONG :tmi.twitch.tv\r\n")
+            line = await self.__stream.read_buf()
+
+        return line.decode()
+
+    @property
+    def logged(self) -> bool:
+        return self.__logged
 
 
 __all__ = [

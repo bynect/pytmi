@@ -1,5 +1,5 @@
-__version__ = "0.1.1"
+__version__ = "0.2.0-rc"
 
-from .connection import *
-from .client import *
+from .stream import *
 from .message import *
+from .client import *

@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 
-with open("README.md") as f:
+with open("docs/README.md") as f:
     readme = f.read()
 
 
@@ -24,12 +24,12 @@ setup_info = {
     "version": version,
     "author": "nect",
     "description": description,
-   "long_description": readme,
+    "long_description": readme,
     "long_description_content_type": "text/markdown",
     "url": project_url,
     "packages": find_packages(),
     "classifiers": classifiers,
-    "python_requires": '>= 3.6',
+    "python_requires": ">= 3.6",
 }
 
 

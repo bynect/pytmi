@@ -1,0 +1,7 @@
+*
+!pytmi
+!pytmi/**/*.py
+!docs
+!docs/**
+!setup.py
+!.gitignore

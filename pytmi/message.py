@@ -2,11 +2,13 @@ from typing import Optional, Union, Dict, Any
 
 
 class TmiMessage(object):
-    """Message abstraction for IRC messages and TMI tags."""
+    """Message abstraction for IRC messages with TMI tags."""
 
-    def __init__(self, message: Union[str, bytes]):
+    def __init__(self, message: Union[str, bytes]) -> None:
         if isinstance(message, bytes):
             message = message.decode()
+
+        message = message.strip()
 
         self.__tags: Dict[str, Any] = {}
 
@@ -90,7 +92,7 @@ class TmiMessage(object):
 
     @property
     def parsed(self) -> bool:
-        """Compare message properties."""
+        """Return `True` if the message was parsed correctly, otherwise `False`."""
         return self.__parsed
 
 
