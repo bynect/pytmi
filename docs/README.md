@@ -39,11 +39,11 @@ if __name__ == "__main__":
         print("Something went wrong.")
 ```
 
-You can find a [usage example](docs/example.py) inside the `docs` directory.
+You can find a [usage example](example.py) inside the `docs` directory.
 
 ## Todos
 
-* TmiClient respond to server ping only when constantly reading messages. Consider using scheduler or asyncio.Task for the moment.
+* `TmiClient` respond to server ping only when constantly reading messages. Consider using a scheduler or `asyncio.Task`s for the moment.
 
 ## Changelog
 
