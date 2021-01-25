@@ -35,12 +35,10 @@ async def main(channel: str) -> None:
                 print("%s" % sent_str, end=" ")
 
             privmsg = msg.command.split(" :", 1)[1]
+            name = msg.tags.get("display-name", "justinfan")
 
-            print("\x1b[38;2;%u;%u;%um" % (r, g, b), end="")
-            print(
-                "@%s\x1b[0m: %s\n"
-                % (msg.tags.get("display-name", "justinfan"), privmsg)
-            )
+            print(f"\x1b[38;2;{r};{g};{b}m", end="")
+            print(f"@{name}\x1b[0m: {privmsg}")
 
             del raw
             del msg
