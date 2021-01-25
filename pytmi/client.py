@@ -154,6 +154,8 @@ class TmiClient(TmiBaseClient):
 
         if channel == None:
             channel = self.__joined_channel
+            if channel == None:
+                raise AttributeError("Unspecified channel")
 
         if not channel.startswith("#"):
             channel = "#" + channel
@@ -169,6 +171,8 @@ class TmiClient(TmiBaseClient):
 
         if channel == None:
             channel = self.__joined_channel
+            if channel == None:
+                raise AttributeError("Unspecified channel")
 
         if not channel.startswith("#"):
             channel = "#" + channel
