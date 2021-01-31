@@ -12,15 +12,15 @@ async def main(channel: str) -> None:
     await client.join(channel)
 
     while True:
+        await asyncio.sleep(1)
         try:
             raw = await client.get_privmsg()
             msg = pytmi.TmiMessage(raw.lstrip())
 
-            if msg == None or not msg.parsed or not "PRIVMSG" in msg.command:
+            if msg == None or not msg.valid or not "PRIVMSG" in msg.command:
                 continue
 
             r, g, b = 0xFF, 0xFF, 0xFF
-
             if msg.tags.get("color", None) != None:
                 color = int(msg.tags["color"][1:], 16)
                 r = color >> 16

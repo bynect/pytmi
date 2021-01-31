@@ -1,7 +1,16 @@
 from typing import Optional, Union, Dict, Any
+from abc import ABC, abstractproperty
 
 
-class TmiMessage(object):
+class TmiBaseMessage(ABC):
+    """Base message abstraction for IRC messages with TMI tags."""
+
+    @abstractproperty
+    def valid(self) -> bool:
+        """Return `True` if the message was parsed successfully, otherwise `False`."""
+
+
+class TmiMessage(TmiBaseMessage):
     """Message abstraction for IRC messages with TMI tags."""
 
     def __init__(self, message: Union[str, bytes]) -> None:
@@ -91,8 +100,7 @@ class TmiMessage(object):
         return self.__left
 
     @property
-    def parsed(self) -> bool:
-        """Return `True` if the message was parsed correctly, otherwise `False`."""
+    def valid(self) -> bool:
         return self.__parsed
 
 

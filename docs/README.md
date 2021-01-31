@@ -45,6 +45,8 @@ You can find a [usage example](example.py) inside the `docs` directory.
 
 * `TmiClient` respond to server ping only when constantly reading messages. Consider using a scheduler or `asyncio.Task`s for the moment.
 
+* Initial connection to Twitch server is a little bit slow now.
+
 ## Changelog
 
 ### v0.2.0
