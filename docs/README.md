@@ -51,6 +51,10 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Changelog
 
+### v0.2.1
+
+* Minor code refactoring.
+
 ### v0.2.0
 
 * Rewrite library to be asynchronous.
@@ -61,7 +65,7 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ### v0.1.1
 
-* Minor refactoring.
+* Minor code refactoring.
 
 * Improve message handling and parsing.
 
