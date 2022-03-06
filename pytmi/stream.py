@@ -102,6 +102,8 @@ class TmiStream(TmiBaseStream):
         if not self.connected:
             raise AttributeError("Not connected")
 
+        assert self.__writer
+
         self.__buffer += data
         newline = self.__buffer.find(b"\r\n")
 
@@ -114,6 +116,8 @@ class TmiStream(TmiBaseStream):
     async def read_buf(self) -> bytes:
         if not self.connected:
             raise AttributeError("Not connected")
+
+        assert self.__reader
 
         return await self.__reader.readuntil(b"\r\n")
 

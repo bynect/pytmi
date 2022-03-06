@@ -1,8 +1,9 @@
 import abc
-from typing import Optional, Type
+from typing import Optional, Type, cast
 import random
 import asyncio
 import ssl
+
 from pytmi.message import make_privmsg
 
 from pytmi.stream import *
@@ -21,12 +22,9 @@ class TmiClient(TmiBaseClient):
     """Asynchronous client for handling IRC-TMI streams and messages."""
 
     def __init__(
-        self, ssl: bool = True, stream: Optional[Type[TmiBaseStream]] = None
+        self, ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream
     ) -> None:
-        if stream == None:
-            self.__stream_type = TmiStream
-        else:
-            self.__stream_type = stream
+        self.__stream_type = stream
 
         self.__ssl = ssl
         self.__stream = self.__stream_type()
@@ -144,7 +142,7 @@ class TmiClient(TmiBaseClient):
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        self.__joined_channel = channel
+        self.__joined = channel
 
         command = "JOIN " + channel + "\r\n"
         await self.__stream.write_buf(command.encode())
@@ -154,14 +152,17 @@ class TmiClient(TmiBaseClient):
             raise AttributeError("Not logged in")
 
         if channel == None:
-            channel = self.__joined_channel
+            channel = self.__joined
             if channel == None:
                 raise AttributeError("Unspecified channel")
+
+        # TODO: Is this cast really necessary?
+        channel = cast(str, channel)
 
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        self.__joined_channel = None
+        self.__joined = None
 
         command = "PART " + channel + "\r\n"
         await self.__stream.write_buf(command.encode())
@@ -171,9 +172,12 @@ class TmiClient(TmiBaseClient):
             raise AttributeError("Not logged in")
 
         if channel == None:
-            channel = self.__joined_channel
+            channel = self.__joined
             if channel == None:
                 raise AttributeError("Unspecified channel")
+
+        # TODO: Is this cast really necessary?
+        channel = cast(str, channel)
 
         if not channel.startswith("#"):
             channel = "#" + channel

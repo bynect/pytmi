@@ -64,7 +64,7 @@ class TmiMessage(TmiBaseMessage):
         for tag in tags_list:
             key, value = tag.split("=", 1)
 
-            norm = value
+            norm: Any = value
 
             if value.isspace() or value == "":
                 norm = None
