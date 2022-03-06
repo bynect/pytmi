@@ -49,6 +49,8 @@ if __name__ == "__main__":
         channel = input("Insert the channel to join: ").lstrip()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
+        pending = asyncio.Task.all_tasks()
+        loop.run_until_complete(asyncio.gather(*pending))
     except KeyboardInterrupt:
         print("Quitting...")
     except Exception:

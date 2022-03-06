@@ -7,6 +7,8 @@
 
 TMI (Twitch Messaging Interface) library for Python.
 
+You can get your OAuth token with the site `https://twitchapps.com/tmi/`.
+
 ## Example
 
 Here's a little application that logs in the user using OAuth, joins the Twitch channel requested by the user, sends the message `Hello, Twitch!` to the chat and then leaves the channel.

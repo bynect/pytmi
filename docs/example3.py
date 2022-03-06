@@ -6,7 +6,7 @@ import pytmi
 
 
 async def main(channel: str) -> None:
-    client = pytmi.TmiClient()
+    client = pytmi.TmiClient(use_task=False)
 
     await client.login_anonymous()
     await client.join(channel)
@@ -28,6 +28,8 @@ if __name__ == "__main__":
         channel = input("Insert the channel to join: ").lstrip()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
+        pending = asyncio.Task.all_tasks()
+        loop.run_until_complete(asyncio.gather(*pending))
     except KeyboardInterrupt:
         print("Quitting...")
     except Exception:
