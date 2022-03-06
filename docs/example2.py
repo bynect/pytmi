@@ -48,8 +48,10 @@ async def main(channel: str) -> None:
         # FIXME: Change these except shenanigans
         except OSError:
             raise
-        except Exception:
-            continue
+        except KeyboardInterrupt:
+            await client.logout()
+            print("Quitting...")
+            return
 
 
 if __name__ == "__main__":
@@ -57,8 +59,5 @@ if __name__ == "__main__":
         channel = input("Insert the channel to join: ").lstrip()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
-    except KeyboardInterrupt:
-        print("Quitting...")
-        sys.exit(0)
     except Exception:
         raise
