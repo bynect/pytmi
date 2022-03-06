@@ -12,11 +12,8 @@ async def main(channel: str) -> None:
     await client.join(channel)
 
     print("Listening chat of {}".format(channel))
-    while True:
-        await asyncio.sleep(1)
-        try:
-            # raw = await client.get_privmsg()
-            # msg = pytmi.TmiMessage(raw.lstrip())
+    try:
+        while True:
             msg = await client.get_message()
 
             if msg is None or not msg.valid or not "PRIVMSG" in msg.command:
@@ -42,16 +39,13 @@ async def main(channel: str) -> None:
             print(f"\x1b[38;2;{r};{g};{b}m", end="")
             print(f"@{name}\x1b[0m: {privmsg}")
 
-            del raw
             del msg
 
         # FIXME: Change these except shenanigans
-        except OSError:
-            raise
-        except KeyboardInterrupt:
-            await client.logout()
-            print("Quitting...")
-            return
+    except OSError:
+        raise
+    finally:
+        await client.logout()
 
 
 if __name__ == "__main__":
@@ -59,5 +53,7 @@ if __name__ == "__main__":
         channel = input("Insert the channel to join: ").lstrip()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
+    except KeyboardInterrupt:
+        print("Quitting...")
     except Exception:
         raise

@@ -12,6 +12,13 @@ from pytmi.buffer import TmiBuffer
 
 TMI_PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
 TMI_PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
+TMI_CAPS = [
+    (
+        f"CAP REQ :twitch.tv/{cap}\r\n".encode("ascii"),
+        f":tmi.twitch.tv CAP * ACK :twitch.tv/{cap}\r\n".encode("ascii"),
+    )
+    for cap in ["membership", "tags", "commands"]
+]
 
 
 # Default client limits
@@ -96,12 +103,12 @@ class TmiClient(TmiBaseClient):
             await self.__stream.connect(TMI_SERVER, TMI_SERVER_PORT)
 
         pass_command = "PASS " + token + "\r\n"
+        await self.__stream.write_buf(pass_command.encode())
+
         nick_command = "NICK " + nick.lower() + "\r\n"
+        await self.__stream.write_buf(nick_command.encode())
 
         try:
-            await self.__stream.write_buf(pass_command.encode())
-            await self.__stream.write_buf(nick_command.encode())
-
             welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
             assert await self.__stream.read_buf() == welcome1.encode()
 
@@ -124,23 +131,9 @@ class TmiClient(TmiBaseClient):
             assert await self.__stream.read_buf() == welcome7.encode()
 
             # Capabilities
-            req1 = b"CAP REQ :twitch.tv/membership\r\n"
-            await self.__stream.write_buf(req1)
-
-            ack1 = b":tmi.twitch.tv CAP * ACK :twitch.tv/membership\r\n"
-            assert await self.__stream.read_buf() == ack1
-
-            req2 = b"CAP REQ :twitch.tv/commands\r\n"
-            await self.__stream.write_buf(req2)
-
-            ack2 = b":tmi.twitch.tv CAP * ACK :twitch.tv/commands\r\n"
-            assert await self.__stream.read_buf() == ack2
-
-            req3 = b"CAP REQ :twitch.tv/tags\r\n"
-            await self.__stream.write_buf(req3)
-
-            ack3 = b":tmi.twitch.tv CAP * ACK :twitch.tv/tags\r\n"
-            assert await self.__stream.read_buf() == ack3
+            for req, ack in TMI_CAPS:
+                await self.__stream.write_buf(req)
+                assert await self.__stream.read_buf() == ack
 
         except AssertionError:
             raise ConnectionError("Login failed")
@@ -152,10 +145,12 @@ class TmiClient(TmiBaseClient):
             raise AttributeError("Not logged in")
 
         if self.__joined is not None:
-            self.part(self.__joined)
+            await self.part(self.__joined)
 
         await self.__stream.disconnect()
         self.__logged = False
+
+        self.__task = None
 
     async def join(self, channel: str) -> None:
         if not self.__logged:
@@ -206,24 +201,20 @@ class TmiClient(TmiBaseClient):
 
         await self.__stream.write_buf(make_privmsg(channel, message))
 
-    async def get_privmsg(self) -> str:
+    async def __recv_message(self) -> bytes:
+        line = await self.__stream.read_buf()
+
+        if line == TMI_PING_MESSAGE:
+            self.__stream.write_buf(TMI_PONG_MESSAGE)
+            line = await self.__stream.read_buf()
+
+        return line
+
+    async def get_raw_message(self) -> bytes:
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        line = await self.__stream.read_buf()
-
-        if line == PING_MESSAGE:
-            self.__stream.write_buf(PONG_MESSAGE)
-            line = await self.__stream.read_buf()
-
-        return line.decode()
-
-    async def get_raw_message(self) -> str:
-
-        if self.__buf.empty():
-            return await self.get_privmsg()
-        else:
-            return self.__buf.pop()
+        return await self.__recv_message()
 
     async def get_message(self) -> TmiMessage:
         return TmiMessage(await self.get_raw_message())
