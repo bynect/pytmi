@@ -2,8 +2,6 @@ import collections
 import abc
 from typing import Deque
 
-from pytmi import MAX_LENGTH
-
 
 class TmiBaseBuffer(abc.ABC):
     """Abstract buffer for TMI messages."""
@@ -26,6 +24,10 @@ class TmiBaseBuffer(abc.ABC):
         If no elements are present, raises an IndexError.
         """
 
+    @abc.abstractmethod
+    def empty(self) -> bool:
+        """Check if the buffer is empty."""
+
 
 class TmiBuffer(TmiBaseBuffer):
     """Circular buffer for TMI messages."""
@@ -45,3 +47,6 @@ class TmiBuffer(TmiBaseBuffer):
 
     def peek(self) -> str:
         return self.__buf[-1]
+
+    def empty(self) -> bool:
+        return len(self.__buf) == 0

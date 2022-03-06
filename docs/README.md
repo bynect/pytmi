@@ -43,6 +43,8 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Todos
 
+* Handle messages that are not correctly encoded in UTF8.
+
 * Create a subclass of `TmiMessage` for each message type.
 
 * `TmiClient` respond to server ping only when constantly reading messages. Consider using a scheduler or `asyncio.Task`s for the moment.

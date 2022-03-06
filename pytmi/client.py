@@ -3,14 +3,21 @@ import random
 import asyncio
 import ssl
 from typing import Optional, Type, cast
+from pytmi.buffer import TmiBuffer
 
-from pytmi.message import make_privmsg
+from pytmi.message import TmiMessage, make_privmsg
 from pytmi.stream import *
-from pytmi import MAX_RETRY
+from pytmi import MAX_RETRY, MAX_BUFFER_SIZE
 
 
 PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
 PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
+
+
+# Default client limits
+# These are arbitrary value
+MAX_RETRY = 8
+MAX_BUFFER_SIZE = 128
 
 
 class TmiBaseClient(abc.ABC):
@@ -21,9 +28,11 @@ class TmiClient(TmiBaseClient):
     """Asynchronous client for handling IRC-TMI streams and messages."""
 
     def __init__(
-        self, use_ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream
+        self, use_ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream,
+        max_buffer_size: int = MAX_BUFFER_SIZE
     ) -> None:
         self.__stream_type = stream
+        self.__buf = TmiBuffer(max_buffer_size)
 
         self.__use_ssl = use_ssl
         self.__stream = self.__stream_type()
@@ -197,6 +206,16 @@ class TmiClient(TmiBaseClient):
             line = await self.__stream.read_buf()
 
         return line.decode()
+
+    async def get_raw_message(self) -> str:
+
+        if self.__buf.empty():
+            return await self.get_privmsg()
+        else:
+            return self.__buf.pop()
+
+    async def get_message(self) -> TmiMessage:
+        return TmiMessage(await self.get_raw_message())
 
     @property
     def logged(self) -> bool:

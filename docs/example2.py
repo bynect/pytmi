@@ -15,8 +15,9 @@ async def main(channel: str) -> None:
     while True:
         await asyncio.sleep(1)
         try:
-            raw = await client.get_privmsg()
-            msg = pytmi.TmiMessage(raw.lstrip())
+            # raw = await client.get_privmsg()
+            # msg = pytmi.TmiMessage(raw.lstrip())
+            msg = await client.get_message()
 
             if msg is None or not msg.valid or not "PRIVMSG" in msg.command:
                 continue
