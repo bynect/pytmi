@@ -53,6 +53,12 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Changelog
 
+### v0.2.2
+
+* Add message buffer abstraction.
+
+* Major code refactoring.
+
 ### v0.2.1
 
 * Minor code refactoring.
