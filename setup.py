@@ -9,7 +9,6 @@ project_url = "https://github.com/bynect/pytmi"
 
 
 classifiers = [
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -33,7 +32,7 @@ setup_info = {
     "url": project_url,
     "packages": find_packages(),
     "classifiers": classifiers,
-    "python_requires": ">= 3.6",
+    "python_requires": ">= 3.7",
 }
 
 

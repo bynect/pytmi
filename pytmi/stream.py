@@ -83,6 +83,8 @@ class TmiStream(TmiBaseStream):
             raise AttributeError("Not connected")
 
         self.__writer.close()
+        await self.__writer.wait_closed()
+
         self.__writer = None
         self.__reader = None
         self.__ssl_ctx = None

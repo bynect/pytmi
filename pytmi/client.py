@@ -167,16 +167,16 @@ class TmiClient(TmiBaseClient):
             await self.part(self.__joined)
 
         self.__logged = False
-        if self.__use_task:
-            assert self.__task is not None
-            self.__task.cancel()
+        await self.__stream.disconnect()
 
-            with suppress(asyncio.CancelledError):
-                asyncio.get_event_loop().run_until_complete(self.__task)
+        if self.__use_task:
+            # assert self.__task is not None
+            # self.__task.cancel()
+
+            # with suppress(asyncio.CancelledError):
+            #    asyncio.get_event_loop().run_until_complete(self.__task)
 
             self.__task = None
-
-        await self.__stream.disconnect()
 
     async def join(self, channel: str) -> None:
         if not self.__logged:
@@ -203,10 +203,10 @@ class TmiClient(TmiBaseClient):
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        self.__joined = None
-
         command = "PART " + channel + "\r\n"
         await self.__stream.write_buf(command.encode())
+
+        self.__joined = None
 
     async def send_privmsg(self, message: str, channel: Optional[str] = None) -> None:
         if not self.__logged:
