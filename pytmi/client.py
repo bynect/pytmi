@@ -1,21 +1,16 @@
 import abc
-from typing import Optional, Type, cast
 import random
 import asyncio
 import ssl
+from typing import Optional, Type, cast
 
 from pytmi.message import make_privmsg
-
 from pytmi.stream import *
+from pytmi import MAX_RETRY
 
 
 PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
 PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
-
-
-# Default client limits
-# Those are arbitrary value
-MAX_RETRY = 8
 
 
 class TmiBaseClient(abc.ABC):
@@ -54,14 +49,16 @@ class TmiClient(TmiBaseClient):
             try:
                 await self.__login(token, nick)
                 return
-            except OSError:
-                raise
-
-            if backoff <= 1:
-                backoff += 1
-            else:
-                backoff *= 2
-                await asyncio.sleep(backoff / 1.5)
+            except Exception as e:
+                if isinstance(e, OSError):
+                    raise
+                else:
+                    # Wait a bit before retrying
+                    if backoff <= 1:
+                        backoff += 1
+                    else:
+                        backoff *= 2
+                        await asyncio.sleep(backoff / 1.5)
 
         raise ConnectionError("Connection failed")
 
@@ -106,6 +103,7 @@ class TmiClient(TmiBaseClient):
             welcome7 = f":tmi.twitch.tv 376 {nick} :>\r\n"
             assert await self.__stream.read_buf() == welcome7.encode()
 
+            # Capabilities
             req1 = b"CAP REQ :twitch.tv/membership\r\n"
             await self.__stream.write_buf(req1)
 
