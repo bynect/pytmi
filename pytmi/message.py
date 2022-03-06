@@ -1,11 +1,11 @@
 from typing import Optional, Union, Dict, Any
-from abc import ABC, abstractproperty
+import abc
 
 
-class TmiBaseMessage(ABC):
+class TmiBaseMessage(abc.ABC):
     """Base message abstraction for IRC messages with TMI tags."""
 
-    @abstractproperty
+    @abc.abstractproperty
     def valid(self) -> bool:
         """Return `True` if the message was parsed successfully, otherwise `False`."""
 
@@ -105,11 +105,9 @@ class TmiMessage(TmiBaseMessage):
 
 
 def make_privmsg(channel: str, message: str) -> bytes:
-    """Format and encode an IRC private message"""
+    """Format and encode an IRC private message."""
 
-    # TODO: Check length
-    # IRC max len = 512 bytes (with \r\n)
-    # Twitch max len = around 500 bytes
+    assert len(message) <= 500
     return "PRIVMSG {} : {}\r\n".format(
         channel if channel.startswith("#") else "#" + channel, message
     ).encode()
