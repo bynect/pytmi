@@ -56,7 +56,7 @@ class TmiMessage(TmiBaseMessage):
     def __parse_tags(self, tags: str) -> None:
         """Parse the given tags populating the `tags` property with a key-value dict."""
 
-        if tags == None:
+        if tags is None:
             return
 
         tags_list = tags.split(";")
@@ -103,11 +103,10 @@ class TmiMessage(TmiBaseMessage):
     def valid(self) -> bool:
         return self.__parsed
 
+
 def make_privmsg(channel: str, message: str) -> bytes:
     """Format and encode an IRC private message"""
     return "PRIVMSG #{} : {}\r\n".format(channel, message).encode()
 
-__all__ = [
-    "TmiMessage",
-    "make_privmsg"
-]
+
+__all__ = ["TmiMessage", "make_privmsg"]

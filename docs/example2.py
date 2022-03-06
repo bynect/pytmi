@@ -6,7 +6,7 @@ import pytmi
 
 
 async def main(channel: str) -> None:
-    client = pytmi.TmiClient(ssl=False)
+    client = pytmi.TmiClient(use_ssl=False)
 
     await client.login_anonymous()
     await client.join(channel)
@@ -17,17 +17,17 @@ async def main(channel: str) -> None:
             raw = await client.get_privmsg()
             msg = pytmi.TmiMessage(raw.lstrip())
 
-            if msg == None or not msg.valid or not "PRIVMSG" in msg.command:
+            if msg is None or not msg.valid or not "PRIVMSG" in msg.command:
                 continue
 
             r, g, b = 0xFF, 0xFF, 0xFF
-            if msg.tags.get("color", None) != None:
+            if msg.tags.get("color", None) is not None:
                 color = int(msg.tags["color"][1:], 16)
                 r = color >> 16
                 g = (color & 0x00FF00) >> 8
                 b = color & 0x0000FF
 
-            if msg.tags.get("tmi-sent-ts", None) != None:
+            if msg.tags.get("tmi-sent-ts", None) is not None:
                 sent_ts = datetime.datetime.fromtimestamp(
                     msg.tags["tmi-sent-ts"] / 1000
                 )

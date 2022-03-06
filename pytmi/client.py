@@ -22,11 +22,11 @@ class TmiClient(TmiBaseClient):
     """Asynchronous client for handling IRC-TMI streams and messages."""
 
     def __init__(
-        self, ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream
+        self, use_ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream
     ) -> None:
         self.__stream_type = stream
 
-        self.__ssl = ssl
+        self.__use_ssl = use_ssl
         self.__stream = self.__stream_type()
 
         self.__logged: bool = False
@@ -67,7 +67,7 @@ class TmiClient(TmiBaseClient):
         await self.login_oauth(token, nick, retry=retry)
 
     async def __login(self, token: str, nick: str) -> None:
-        if self.__ssl:
+        if self.__use_ssl:
             await self.__stream.connect(
                 TMI_SERVER, TMI_SERVER_SSLPORT, ssl_ctx=ssl.create_default_context()
             )
@@ -129,7 +129,7 @@ class TmiClient(TmiBaseClient):
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        if self.__joined != None:
+        if self.__joined is not None:
             self.part(self.__joined)
 
         await self.__stream.disconnect()
@@ -151,9 +151,9 @@ class TmiClient(TmiBaseClient):
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        if channel == None:
+        if channel is None:
             channel = self.__joined
-            if channel == None:
+            if channel is None:
                 raise AttributeError("Unspecified channel")
 
         # TODO: Is this cast really necessary?
@@ -171,9 +171,9 @@ class TmiClient(TmiBaseClient):
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        if channel == None:
+        if channel is None:
             channel = self.__joined
-            if channel == None:
+            if channel is None:
                 raise AttributeError("Unspecified channel")
 
         # TODO: Is this cast really necessary?

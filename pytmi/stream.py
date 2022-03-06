@@ -78,7 +78,7 @@ class TmiStream(TmiBaseStream):
         if self.connected:
             raise AttributeError("Alredy connected")
 
-        if ssl_ctx != None:
+        if ssl_ctx is not None:
             self.__ssl_ctx = ssl_ctx
             self.__reader, self.__writer = await asyncio.open_connection(
                 host, port, ssl=ssl_ctx
@@ -127,7 +127,7 @@ class TmiStream(TmiBaseStream):
 
     @property
     def ssl(self):
-        return self.connected and self.__ssl_ctx != None
+        return self.connected and self.__ssl_ctx is not None
 
 
 __all__ = [
