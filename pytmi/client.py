@@ -3,6 +3,7 @@ import random
 import asyncio
 import ssl
 from typing import Optional, Type, cast
+from contextlib import suppress
 
 from pytmi.message import TmiMessage, make_privmsg
 from pytmi.stream import TmiBaseStream, TmiStream
@@ -30,7 +31,7 @@ TMI_CAPS = [
 # These are arbitrary values
 CLIENT_MAX_RETRY = 8
 CLIENT_MAX_BUFFER_SIZE = 128
-CLIENT_MESSAGE_INTERVAL = 2
+CLIENT_MESSAGE_INTERVAL = 0.5
 
 
 class TmiBaseClient(abc.ABC):
@@ -43,7 +44,7 @@ class TmiClient(TmiBaseClient):
     def __init__(
         self,
         use_ssl: bool = True,
-        use_keepalive: bool = True,
+        use_task: bool = True,
         stream: Type[TmiBaseStream] = TmiStream,
         max_buffer_size: int = CLIENT_MAX_BUFFER_SIZE,
         message_interval: float = CLIENT_MESSAGE_INTERVAL,
@@ -57,9 +58,9 @@ class TmiClient(TmiBaseClient):
         self.__joined: Optional[str] = None
         self.__logged: bool = False
 
-        self.__use_keepalive: bool = use_keepalive
-        self.__keepalive = None
-        self.__interval = message_interval  # Seconds
+        self.__use_task: bool = use_task
+        self.__task: Optional[asyncio.Task] = None
+        self.__interval: float = message_interval  # Seconds
 
     async def login_oauth(
         self, token: str, nick: str, retry: int = CLIENT_MAX_RETRY
@@ -77,14 +78,13 @@ class TmiClient(TmiBaseClient):
 
         backoff = 0
 
-        for _ in range(retry):
+        # TODO: Improve connection error handling
+        while retry > 0:
+            retry -= 1
             try:
                 await self.__login(token, nick)
                 return
-            except Exception as e:
-                if isinstance(e, OSError):
-                    raise
-
+            except AssertionError:
                 # Wait a bit before retrying
                 if backoff <= 1:
                     backoff += 1
@@ -113,37 +113,51 @@ class TmiClient(TmiBaseClient):
         nick_command = "NICK " + nick.lower() + "\r\n"
         await self.__stream.write_buf(nick_command.encode())
 
-        try:
-            welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
-            assert await self.__stream.read_buf() == welcome1.encode()
+        welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
+        assert await self.__stream.read_buf() == welcome1.encode()
 
-            welcome2 = f":tmi.twitch.tv 002 {nick} :Your host is tmi.twitch.tv\r\n"
-            assert await self.__stream.read_buf() == welcome2.encode()
+        welcome2 = f":tmi.twitch.tv 002 {nick} :Your host is tmi.twitch.tv\r\n"
+        assert await self.__stream.read_buf() == welcome2.encode()
 
-            welcome3 = f":tmi.twitch.tv 003 {nick} :This server is rather new\r\n"
-            assert await self.__stream.read_buf() == welcome3.encode()
+        welcome3 = f":tmi.twitch.tv 003 {nick} :This server is rather new\r\n"
+        assert await self.__stream.read_buf() == welcome3.encode()
 
-            welcome4 = f":tmi.twitch.tv 004 {nick} :-\r\n"
-            assert await self.__stream.read_buf() == welcome4.encode()
+        welcome4 = f":tmi.twitch.tv 004 {nick} :-\r\n"
+        assert await self.__stream.read_buf() == welcome4.encode()
 
-            welcome5 = f":tmi.twitch.tv 375 {nick} :-\r\n"
-            assert await self.__stream.read_buf() == welcome5.encode()
+        welcome5 = f":tmi.twitch.tv 375 {nick} :-\r\n"
+        assert await self.__stream.read_buf() == welcome5.encode()
 
-            welcome6 = f":tmi.twitch.tv 372 {nick} :You are in a maze of twisty passages, all alike.\r\n"
-            assert await self.__stream.read_buf() == welcome6.encode()
+        welcome6 = f":tmi.twitch.tv 372 {nick} :You are in a maze of twisty passages, all alike.\r\n"
+        assert await self.__stream.read_buf() == welcome6.encode()
 
-            welcome7 = f":tmi.twitch.tv 376 {nick} :>\r\n"
-            assert await self.__stream.read_buf() == welcome7.encode()
+        welcome7 = f":tmi.twitch.tv 376 {nick} :>\r\n"
+        assert await self.__stream.read_buf() == welcome7.encode()
 
-            # Capabilities
-            for req, ack in TMI_CAPS:
-                await self.__stream.write_buf(req)
-                assert await self.__stream.read_buf() == ack
-
-        except AssertionError:
-            raise ConnectionError("Login failed")
+        # Capabilities
+        for req, ack in TMI_CAPS:
+            await self.__stream.write_buf(req)
+            assert await self.__stream.read_buf() == ack
 
         self.__logged = True
+
+        if self.__use_task:
+            self.__task = asyncio.get_event_loop().create_task(self.__recv_task())
+
+    async def __recv_message(self) -> bytes:
+        line = await self.__stream.read_buf()
+
+        if line == TMI_PING_MESSAGE:
+            await self.__stream.write_buf(TMI_PONG_MESSAGE)
+            line = await self.__stream.read_buf()
+
+        return line
+
+    async def __recv_task(self) -> None:
+        while self.__logged:
+            line = await self.__recv_message()
+            self.__buf.append(line)
+            await asyncio.sleep(self.__interval)
 
     async def logout(self) -> None:
         if not self.__logged:
@@ -152,8 +166,17 @@ class TmiClient(TmiBaseClient):
         if self.__joined is not None:
             await self.part(self.__joined)
 
-        await self.__stream.disconnect()
         self.__logged = False
+        if self.__use_task:
+            assert self.__task is not None
+            self.__task.cancel()
+
+            with suppress(asyncio.CancelledError):
+                asyncio.get_event_loop().run_until_complete(self.__task)
+
+            self.__task = None
+
+        await self.__stream.disconnect()
 
     async def join(self, channel: str) -> None:
         if not self.__logged:
@@ -200,18 +223,15 @@ class TmiClient(TmiBaseClient):
 
         await self.__stream.write_buf(make_privmsg(channel, message))
 
-    async def __recv_message(self) -> bytes:
-        line = await self.__stream.read_buf()
-
-        if line == TMI_PING_MESSAGE:
-            await self.__stream.write_buf(TMI_PONG_MESSAGE)
-            line = await self.__stream.read_buf()
-
-        return line
-
     async def get_raw_message(self) -> bytes:
         if not self.__logged:
             raise AttributeError("Not logged in")
+
+        if self.__use_task:
+            while self.__buf.empty():
+                await asyncio.sleep(self.__interval)
+
+            return self.__buf.pop()
 
         return await self.__recv_message()
 
