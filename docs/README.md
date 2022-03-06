@@ -43,6 +43,8 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Todos
 
+* Create a subclass of `TmiMessage` for each message type.
+
 * `TmiClient` respond to server ping only when constantly reading messages. Consider using a scheduler or `asyncio.Task`s for the moment.
 
 * Initial connection to Twitch server is a little bit slow now.

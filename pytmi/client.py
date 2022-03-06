@@ -9,6 +9,10 @@ from pytmi.message import make_privmsg
 from pytmi.stream import *
 
 
+PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
+PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
+
+
 # Default client limits
 # Those are arbitrary value
 MAX_RETRY = 8
@@ -190,8 +194,8 @@ class TmiClient(TmiBaseClient):
 
         line = await self.__stream.read_buf()
 
-        if line == b"PING :tmi.twitch.tv\r\n":
-            self.__stream.write_buf(b"PONG :tmi.twitch.tv\r\n")
+        if line == PING_MESSAGE:
+            self.__stream.write_buf(PONG_MESSAGE)
             line = await self.__stream.read_buf()
 
         return line.decode()

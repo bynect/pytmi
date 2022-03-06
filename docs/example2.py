@@ -11,6 +11,7 @@ async def main(channel: str) -> None:
     await client.login_anonymous()
     await client.join(channel)
 
+    print("Listening chat of {}".format(channel))
     while True:
         await asyncio.sleep(1)
         try:
@@ -42,6 +43,8 @@ async def main(channel: str) -> None:
 
             del raw
             del msg
+
+        # FIXME: Change these except shenanigans
         except OSError:
             raise
         except Exception:
@@ -54,6 +57,7 @@ if __name__ == "__main__":
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
     except KeyboardInterrupt:
+        print("Quitting...")
         sys.exit(0)
     except Exception:
         raise
