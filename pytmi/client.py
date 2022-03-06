@@ -3,20 +3,22 @@ import random
 import asyncio
 import ssl
 from typing import Optional, Type, cast
-from pytmi.buffer import TmiBuffer
+from contextlib import suppress
 
 from pytmi.message import TmiMessage, make_privmsg
 from pytmi.stream import *
+from pytmi.buffer import TmiBuffer
 
 
-PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
-PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
+TMI_PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
+TMI_PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
 
 
 # Default client limits
 # These are arbitrary value
-MAX_RETRY = 8
-MAX_BUFFER_SIZE = 128
+CLIENT_MAX_RETRY = 8
+CLIENT_MAX_BUFFER_SIZE = 128
+CLIENT_MESSAGE_INTERVAL = 2
 
 
 class TmiBaseClient(abc.ABC):
@@ -27,8 +29,12 @@ class TmiClient(TmiBaseClient):
     """Asynchronous client for handling IRC-TMI streams and messages."""
 
     def __init__(
-        self, use_ssl: bool = True, stream: Type[TmiBaseStream] = TmiStream,
-        max_buffer_size: int = MAX_BUFFER_SIZE
+        self,
+        use_ssl: bool = True,
+        use_keepalive: bool = True,
+        stream: Type[TmiBaseStream] = TmiStream,
+        max_buffer_size: int = CLIENT_MAX_BUFFER_SIZE,
+        message_interval: float = CLIENT_MESSAGE_INTERVAL,
     ) -> None:
         self.__stream_type = stream
         self.__buf = TmiBuffer(max_buffer_size)
@@ -36,10 +42,16 @@ class TmiClient(TmiBaseClient):
         self.__use_ssl = use_ssl
         self.__stream = self.__stream_type()
 
-        self.__logged: bool = False
         self.__joined: Optional[str] = None
+        self.__logged: bool = False
 
-    async def login_oauth(self, token: str, nick: str, retry: int = MAX_RETRY) -> None:
+        self.__use_keepalive: bool = use_keepalive
+        self.__keepalive = None
+        self.__interval = message_interval  # Seconds
+
+    async def login_oauth(
+        self, token: str, nick: str, retry: int = CLIENT_MAX_RETRY
+    ) -> None:
         if self.__logged:
             raise AttributeError("Alredy logged in")
 
@@ -49,7 +61,7 @@ class TmiClient(TmiBaseClient):
         nick = nick.lower()
 
         if retry < 0:
-            retry = MAX_RETRY
+            retry = CLIENT_MAX_RETRY
 
         backoff = 0
 
@@ -70,7 +82,7 @@ class TmiClient(TmiBaseClient):
 
         raise ConnectionError("Connection failed")
 
-    async def login_anonymous(self, retry: int = MAX_RETRY) -> None:
+    async def login_anonymous(self, retry: int = CLIENT_MAX_RETRY) -> None:
         token = "random_string"
         nick = "justinfan" + str(random.randint(12345, 67890))
         await self.login_oauth(token, nick, retry=retry)
