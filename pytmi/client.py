@@ -3,6 +3,7 @@ from typing import Optional, Type
 import random
 import asyncio
 import ssl
+from pytmi.message import make_privmsg
 
 from pytmi.stream import *
 
@@ -177,8 +178,7 @@ class TmiClient(TmiBaseClient):
         if not channel.startswith("#"):
             channel = "#" + channel
 
-        command = "PRIVMSG " + channel + " :" + message + "\r\n"
-        await self.__stream.write_buf(command.encode())
+        await self.__stream.write_buf(make_privmsg(channel, message))
 
     async def get_privmsg(self) -> str:
         if not self.__logged:

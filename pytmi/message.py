@@ -103,7 +103,11 @@ class TmiMessage(TmiBaseMessage):
     def valid(self) -> bool:
         return self.__parsed
 
+def make_privmsg(channel: str, message: str) -> bytes:
+    """Format and encode an IRC private message"""
+    return "PRIVMSG #{} : {}\r\n".format(channel, message).encode()
 
 __all__ = [
     "TmiMessage",
+    "make_privmsg"
 ]
