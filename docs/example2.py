@@ -40,8 +40,6 @@ async def main(channel: str) -> None:
             print(f"@{name}\x1b[0m: {privmsg}")
 
             del msg
-
-        # FIXME: Change these except shenanigans
     except OSError:
         raise
     finally:

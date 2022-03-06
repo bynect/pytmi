@@ -14,8 +14,8 @@ TMI_PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
 TMI_PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
 TMI_CAPS = [
     (
-        f"CAP REQ :twitch.tv/{cap}\r\n".encode("ascii"),
-        f":tmi.twitch.tv CAP * ACK :twitch.tv/{cap}\r\n".encode("ascii"),
+        f"CAP REQ :twitch.tv/{cap}\r\n".encode(),
+        f":tmi.twitch.tv CAP * ACK :twitch.tv/{cap}\r\n".encode(),
     )
     for cap in ["membership", "tags", "commands"]
 ]
