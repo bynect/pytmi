@@ -3,15 +3,20 @@ import random
 import asyncio
 import ssl
 from typing import Optional, Type, cast
-from contextlib import suppress
 
 from pytmi.message import TmiMessage, make_privmsg
-from pytmi.stream import *
+from pytmi.stream import TmiBaseStream, TmiStream
 from pytmi.buffer import TmiBuffer
 
 
+# Twitch IRC server `https://dev.twitch.tv/docs/irc/guide#connecting-to-twitch-irc`
+TMI_SERVER = "irc.chat.twitch.tv"
+TMI_SERVER_PORT = 6667
+TMI_SERVER_SSLPORT = 6697
+
 TMI_PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
 TMI_PONG_MESSAGE = b"PONG :tmi.twitch.tv\r\n"
+
 TMI_CAPS = [
     (
         f"CAP REQ :twitch.tv/{cap}\r\n".encode(),
@@ -22,7 +27,7 @@ TMI_CAPS = [
 
 
 # Default client limits
-# These are arbitrary value
+# These are arbitrary values
 CLIENT_MAX_RETRY = 8
 CLIENT_MAX_BUFFER_SIZE = 128
 CLIENT_MESSAGE_INTERVAL = 2
@@ -79,13 +84,13 @@ class TmiClient(TmiBaseClient):
             except Exception as e:
                 if isinstance(e, OSError):
                     raise
+
+                # Wait a bit before retrying
+                if backoff <= 1:
+                    backoff += 1
                 else:
-                    # Wait a bit before retrying
-                    if backoff <= 1:
-                        backoff += 1
-                    else:
-                        backoff *= 2
-                        await asyncio.sleep(backoff / 1.5)
+                    backoff *= 2
+                    await asyncio.sleep(backoff / 1.5)
 
         raise ConnectionError("Connection failed")
 
@@ -150,8 +155,6 @@ class TmiClient(TmiBaseClient):
         await self.__stream.disconnect()
         self.__logged = False
 
-        self.__task = None
-
     async def join(self, channel: str) -> None:
         if not self.__logged:
             raise AttributeError("Not logged in")
@@ -173,9 +176,7 @@ class TmiClient(TmiBaseClient):
             if channel is None:
                 raise AttributeError("Unspecified channel")
 
-        # TODO: Is this cast really necessary?
         channel = cast(str, channel)
-
         if not channel.startswith("#"):
             channel = "#" + channel
 
@@ -193,9 +194,7 @@ class TmiClient(TmiBaseClient):
             if channel is None:
                 raise AttributeError("Unspecified channel")
 
-        # TODO: Is this cast really necessary?
         channel = cast(str, channel)
-
         if not channel.startswith("#"):
             channel = "#" + channel
 
@@ -205,7 +204,7 @@ class TmiClient(TmiBaseClient):
         line = await self.__stream.read_buf()
 
         if line == TMI_PING_MESSAGE:
-            self.__stream.write_buf(TMI_PONG_MESSAGE)
+            await self.__stream.write_buf(TMI_PONG_MESSAGE)
             line = await self.__stream.read_buf()
 
         return line

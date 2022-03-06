@@ -4,12 +4,6 @@ import abc
 from typing import Union, Optional
 
 
-# Twitch IRC server `https://dev.twitch.tv/docs/irc/guide#connecting-to-twitch-irc`
-TMI_SERVER = "irc.chat.twitch.tv"
-TMI_SERVER_PORT = 6667
-TMI_SERVER_SSLPORT = 6697
-
-
 class TmiBaseStream(abc.ABC):
     """Asynchronous stream base class for the IRC-TMI protocol."""
 
@@ -131,9 +125,6 @@ class TmiStream(TmiBaseStream):
 
 
 __all__ = [
-    "TMI_SERVER",
-    "TMI_SERVER_PORT",
-    "TMI_SERVER_SSLPORT",
     "TmiBaseStream",
     "TmiStream",
 ]
