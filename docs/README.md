@@ -39,7 +39,7 @@ if __name__ == "__main__":
         print("Something went wrong.")
 ```
 
-You can find a [usage example](example.py) inside the `docs` directory.
+You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Todos
 
