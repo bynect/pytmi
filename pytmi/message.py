@@ -106,7 +106,13 @@ class TmiMessage(TmiBaseMessage):
 
 def make_privmsg(channel: str, message: str) -> bytes:
     """Format and encode an IRC private message"""
-    return "PRIVMSG #{} : {}\r\n".format(channel, message).encode()
+
+    # TODO: Check length
+    # IRC max len = 512 bytes (with \r\n)
+    # Twitch max len = around 500 bytes
+    return "PRIVMSG {} : {}\r\n".format(
+        channel if channel.startswith("#") else "#" + channel, message
+    ).encode()
 
 
 __all__ = ["TmiMessage", "make_privmsg"]
