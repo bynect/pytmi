@@ -7,7 +7,6 @@ from pytmi.buffer import TmiBuffer
 
 from pytmi.message import TmiMessage, make_privmsg
 from pytmi.stream import *
-from pytmi import MAX_RETRY, MAX_BUFFER_SIZE
 
 
 PING_MESSAGE = b"PING :tmi.twitch.tv\r\n"
