@@ -43,6 +43,12 @@ if __name__ == "__main__":
 
 You can another find a [usage example](example2.py) inside the `docs` directory.
 
+## Bugs
+
+* Warnings with background tasks.
+
+* Error when using SSL.
+
 ## Todos
 
 * Handle connection and login error in a better way.
