@@ -44,7 +44,7 @@ class TmiClient(TmiBaseClient):
     def __init__(
         self,
         use_ssl: bool = True,
-        use_task: bool = True,
+        use_task: bool = False,
         stream: Type[TmiBaseStream] = TmiStream,
         max_buffer_size: int = CLIENT_MAX_BUFFER_SIZE,
         message_interval: float = CLIENT_MESSAGE_INTERVAL,
