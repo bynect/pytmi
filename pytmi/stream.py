@@ -1,3 +1,5 @@
+"""Module containing stream related abstractions."""
+
 import asyncio
 import ssl
 import abc
@@ -47,7 +49,7 @@ class TmiBaseStream(abc.ABC):
         """Return `True` if there is a connection in place, otherwise `False`."""
 
     @abc.abstractproperty
-    def ssl(self) -> bool:
+    def use_ssl(self) -> bool:
         """Return `True` if a `ssl_ctx` was given in the current connection.
 
         If there is no connection in place or no `ssl_ctx` was given return `False`.
@@ -60,7 +62,7 @@ class TmiStream(TmiBaseStream):
     def __init__(self) -> None:
         self.__writer: Optional[asyncio.StreamWriter] = None
         self.__reader: Optional[asyncio.StreamReader] = None
-        self.__ssl_ctx: Optional[ssl.SSLContext] = None
+        self.__use_ssl: bool = False
 
         self.__connected: bool = False
         self.__buffer: bytes = b""
@@ -68,32 +70,39 @@ class TmiStream(TmiBaseStream):
     async def connect(
         self, host: str, port: Union[int, str], ssl_ctx: Optional[ssl.SSLContext] = None
     ) -> None:
+        assert self.__reader is None
+        assert self.__writer is None
 
-        if self.connected:
-            raise AttributeError("Alredy connected")
+        if ssl_ctx is not None:
+            self.__reader, self.__writer = await asyncio.open_connection(
+                host, port, ssl=ssl_ctx
+            )
+        else:
+            self.__reader, self.__writer = await asyncio.open_connection(host, port)
 
-        self.__ssl_ctx = ssl_ctx
-        self.__reader, self.__writer = await asyncio.open_connection(
-            host, port, ssl=ssl_ctx
-        )
+        self.__use_ssl = ssl_ctx is not None
         self.__connected = True
 
     async def disconnect(self):
-        if not self.connected:
-            raise AttributeError("Not connected")
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return
+
+        assert self.connected
 
         self.__writer.close()
         await self.__writer.wait_closed()
 
+        self.__reset()
+
+    def __reset(self):
         self.__writer = None
         self.__reader = None
-        self.__ssl_ctx = None
+        self.__use_ssl = False
         self.__connected = False
 
     async def write_buf(self, data: bytes) -> None:
-        if not self.connected:
-            raise AttributeError("Not connected")
-
         assert self.__writer
 
         self.__buffer += data
@@ -106,20 +115,24 @@ class TmiStream(TmiBaseStream):
             self.__buffer = self.__buffer[newline:]
 
     async def read_buf(self) -> bytes:
-        if not self.connected:
-            raise AttributeError("Not connected")
-
         assert self.__reader
-
         return await self.__reader.readuntil(b"\r\n")
 
     @property
     def connected(self):
-        return self.__connected
+        if self.__connected:
+            assert self.__writer is not None
+            closing = self.__writer.is_closing()
+            if closing == True:
+                self.__reset()
+            return True
+
+        return False
 
     @property
-    def ssl(self):
-        return self.connected and self.__ssl_ctx is not None
+    def use_ssl(self):
+        assert self.connected
+        return self.__use_ssl
 
 
 __all__ = [

@@ -1,3 +1,5 @@
+"""Module containing buffer related abstractions."""
+
 import collections
 import abc
 from typing import Deque

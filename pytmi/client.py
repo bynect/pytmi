@@ -1,3 +1,5 @@
+"""Module containing the main client class (TmiClient)."""
+
 import abc
 import random
 import asyncio
@@ -84,7 +86,10 @@ class TmiClient(TmiBaseClient):
             try:
                 await self.__login(token, nick)
                 return
-            except AssertionError:
+            except Exception as e:
+                if not isinstance(e, (AssertionError, ConnectionError)):
+                    raise
+
                 # Wait a bit before retrying
                 if backoff <= 1:
                     backoff += 1
@@ -163,8 +168,11 @@ class TmiClient(TmiBaseClient):
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        if self.__joined is not None:
-            await self.part(self.__joined)
+        try:
+            if self.__joined is not None:
+                await self.part(self.__joined)
+        except:
+            self.__joined = None # FIXME
 
         self.__logged = False
         await self.__stream.disconnect()

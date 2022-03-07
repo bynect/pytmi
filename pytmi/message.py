@@ -1,3 +1,5 @@
+"""Module containing message related abstractions."""
+
 from typing import Optional, Union, Dict, Any
 import abc
 
