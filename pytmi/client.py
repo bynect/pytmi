@@ -38,7 +38,10 @@ class Client(object):
 
         while _retry > 0:
             logger.debug(
-                f"Trying to login {retry - _retry} of {retry} (backoff time {backoff / 1.5})"
+                "Trying to login %i of %i (backoff time %f)",
+                retry - _retry,
+                retry,
+                backoff / 1.5,
             )
 
             try:
@@ -46,10 +49,10 @@ class Client(object):
                     await self.__connect()
 
                 await self.__login(token, nick)
-                logger.info("Successfully logged in")
                 return
             except Exception as e:
                 errs.append(e)
+                logger.debug("While trying to login got exception", exc_info=1)
 
             if backoff <= 1:
                 backoff += 1
@@ -80,7 +83,7 @@ class Client(object):
         nick_command = "NICK " + nick + "\r\n"
         await self.__stream.write(nick_command.encode())
 
-        # Acknowledgement
+        # Acknowledgement/test connection
         welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
         assert await self.__stream.read() == welcome1.encode()
 
@@ -108,6 +111,7 @@ class Client(object):
             assert await self.__stream.read() == ack
 
         self.__logged = True
+        logger.info("Logged in")
 
     async def logout(self) -> None:
         if not self.__logged:
@@ -116,9 +120,9 @@ class Client(object):
         if self.__joined is not None:
             await self.part(self.__joined)
 
-        self.__logged = None
         await self.__stream.disconnect()
 
+        self.__logged = False
         logger.info("Logged out")
 
     async def join(self, channel: str) -> None:
@@ -130,7 +134,7 @@ class Client(object):
         await self.__stream.write(command.encode())
 
         self.__joined = channel
-        logger.info(f"Joined channel {channel}")
+        logger.info("Joined channel %s", channel)
 
     async def part(self, channel: Optional[str] = None) -> None:
         if not self.__logged:
@@ -148,7 +152,7 @@ class Client(object):
         await self.__stream.write(command.encode())
         self.__joined = None
 
-        logger.info(f"Parted channel {channel}")
+        logger.info("Parted channel %s", channel)
 
     async def privmsg(self, message: str, channel: Optional[str] = None) -> None:
         if not self.__logged:
@@ -161,22 +165,16 @@ class Client(object):
         channel = cast(str, normalize_channel(channel))
 
         await self.__stream.write(make_privmsg(channel, message))
+        logger.debug("Sent a privmsg to channel %s", channel)
 
-        logger.debug("Sent privmsg to channel")
+    async def get_message(self) -> Message:
+        message = await self.get_message_raw()
+        return Message(message)
 
-    async def get_message(self, raw: bool = False) -> Union[Message, bytes]:
+    async def get_message_raw(self) -> bytes:
         if not self.__logged:
             raise AttributeError("Not logged in")
 
-        message = await self.__get_message()
-        logger.debug(f"Received a message")
-
-        if raw:
-            return message
-
-        return Message(message)
-
-    async def __get_message(self) -> bytes:
         line = await self.__stream.read()
 
         if line == TMI_PING_MESSAGE:

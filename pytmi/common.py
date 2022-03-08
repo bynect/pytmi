@@ -32,7 +32,7 @@ class LoginError(Exception):
         tried: int,
         errs: List[Exception],
         message: str = "Unable to complete login",
-    ):
+    ) -> None:
         self.message = message
         self.tried = tried
         self.errs = errs

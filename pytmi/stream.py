@@ -16,9 +16,7 @@ class LineStream(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def connect(
-        self, host: str, port: Union[int, str], ssl_ctx: Optional[ssl.SSLContext] = None
-    ) -> None:
+    async def disconnect(self) -> None:
         pass
 
     @abc.abstractmethod
@@ -55,13 +53,13 @@ class DefaultLineStream(LineStream):
         )
         self.__connected = True
 
-    async def disconnect(self):
-        assert self.connected
+    async def disconnect(self) -> None:
+        assert self.connected and self.__writer is not None
 
         self.__writer.close()
         await self.__writer.wait_closed()
 
-        self.__init__()
+        DefaultLineStream.__init__(self)
 
     async def write(self, data: bytes) -> None:
         assert self.__writer

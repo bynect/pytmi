@@ -10,7 +10,7 @@ async def main(channel: str) -> None:
 
     print("Dumping chat of {}".format(channel))
     while True:
-        raw = await client.get_message(raw=True)
+        raw = await client.get_message_raw()
         print(raw, "\n")
         del raw
 

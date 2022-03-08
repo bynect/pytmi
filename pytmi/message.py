@@ -2,8 +2,6 @@ from typing import Optional, Union, Dict, Any
 
 
 class Message(object):
-    """Message abstraction for IRC messages with TMI tags."""
-
     def __init__(self, message: Union[str, bytes]) -> None:
         if isinstance(message, bytes):
             message = message.decode()
@@ -26,8 +24,6 @@ class Message(object):
             self.__left = self.__raw
 
     def __parse_raw(self) -> None:
-        """Parse the raw message and populate the `tags`, `net` and `command` properties."""
-
         raw = self.__raw
         if raw.startswith("@"):
             raw = raw[1:]
@@ -45,8 +41,6 @@ class Message(object):
         self.__parsed = True
 
     def __parse_tags(self, tags: str) -> None:
-        """Parse the given tags populating the `tags` property with a key-value dict."""
-
         if tags is None:
             return
 
@@ -66,27 +60,22 @@ class Message(object):
 
     @property
     def raw(self) -> Optional[str]:
-        """Return the raw message string, aka the original input string."""
         return self.__raw
 
     @property
     def tags(self) -> Dict[str, Any]:
-        """Return a dict populated with the message tags key-value."""
         return self.__tags
 
     @property
     def net(self) -> Optional[str]:
-        """Return a string containing the address part of the message."""
         return self.__net
 
     @property
     def command(self) -> Optional[str]:
-        """Return a string containing the command part of the message."""
         return self.__command
 
     @property
     def left(self) -> Optional[str]:
-        """Return a string containing the unparsed part of the message."""
         return self.__left
 
     @property
