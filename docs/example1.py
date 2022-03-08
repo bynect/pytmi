@@ -11,7 +11,7 @@ async def main() -> None:
     await client.login_oauth(token, nick)
 
     await client.join(channel)
-    await client.send_privmsg("Hello, Twitch!")
+    await client.privmsg("Hello, Twitch!")
 
     await client.part(channel)
     await client.logout()

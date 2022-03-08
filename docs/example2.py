@@ -2,11 +2,6 @@ import asyncio
 import datetime
 import pytmi
 
-import logging
-
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-
 
 async def main(channel: str) -> None:
     client = pytmi.Client(use_ssl=False)

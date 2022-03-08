@@ -1,8 +1,10 @@
 *
 !pytmi
+!pytmi/*
 !pytmi/**/*.py
 !docs
 !docs/**
 !setup.py
 !.gitignore
 !.editorconfig
+__pycache__

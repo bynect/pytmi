@@ -51,6 +51,9 @@ class Client(object):
                 await self.__login(token, nick)
                 return
             except Exception as e:
+                if isinstance(e, (ConnectionResetError, ConnectionRefusedError)):
+                    raise
+
                 errs.append(e)
                 logger.debug("While trying to login got exception", exc_info=1)
 

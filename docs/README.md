@@ -23,11 +23,11 @@ async def main() -> None:
     token = input("Insert your Twitch OAuth token: ").lstrip()
     channel = input("Insert the channel to join: ").lstrip()
 
-    client = pytmi.TmiClient()
+    client = pytmi.Client()
     await client.login_oauth(token, nick)
 
     await client.join(channel)
-    await client.send_privmsg("Hello, Twitch!")
+    await client.privmsg("Hello, Twitch!")
 
     await client.part(channel)
     await client.logout()
@@ -51,6 +51,8 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Todos
 
+* Add a way to receive messages and pong every 5 minutes.
+
 * Handle connection and login error in a better way.
 
 * Handle messages that are not correctly encoded in UTF8.
@@ -59,11 +61,19 @@ You can another find a [usage example](example2.py) inside the `docs` directory.
 
 ## Changelog
 
+### v0.3.0
+
+* Major library simplification and rewriting.
+
+* Removed buggy background task.
+
+* Add library logging.
+
 ### v0.2.3
 
-* Add background task to collect messages
+* Add background task to collect messages (removed in `v0.3.0`).
 
-* Refactor code
+* Refactor code.
 
 ### v0.2.2
 
