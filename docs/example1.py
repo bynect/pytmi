@@ -7,7 +7,7 @@ async def main() -> None:
     token = input("Insert your Twitch OAuth token: ").lstrip()
     channel = input("Insert the channel to join: ").lstrip()
 
-    client = pytmi.TmiClient()
+    client = pytmi.Client()
     await client.login_oauth(token, nick)
 
     await client.join(channel)

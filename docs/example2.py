@@ -1,12 +1,15 @@
 import asyncio
-import sys
 import datetime
-
 import pytmi
+
+import logging
+
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 async def main(channel: str) -> None:
-    client = pytmi.TmiClient(use_ssl=False)
+    client = pytmi.Client(use_ssl=False)
 
     await client.login_anonymous()
     await client.join(channel)
@@ -26,9 +29,7 @@ async def main(channel: str) -> None:
             b = color & 0x0000FF
 
         if msg.tags.get("tmi-sent-ts", None) is not None:
-            sent_ts = datetime.datetime.fromtimestamp(
-                msg.tags["tmi-sent-ts"] / 1000
-            )
+            sent_ts = datetime.datetime.fromtimestamp(msg.tags["tmi-sent-ts"] / 1000)
             sent_str = sent_ts.strftime("%H:%M")
             print("%s" % sent_str, end=" ")
 
@@ -39,6 +40,7 @@ async def main(channel: str) -> None:
         print(f"@{name}\x1b[0m: {privmsg}")
 
         del msg
+
 
 if __name__ == "__main__":
     try:

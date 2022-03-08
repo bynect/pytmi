@@ -1,21 +1,19 @@
 import asyncio
-import sys
-import datetime
-
 import pytmi
 
 
 async def main(channel: str) -> None:
-    client = pytmi.TmiClient(use_task=False)
+    client = pytmi.Client()
 
     await client.login_anonymous()
     await client.join(channel)
 
     print("Dumping chat of {}".format(channel))
     while True:
-        raw = await client.get_raw_message()
+        raw = await client.get_message(raw=True)
         print(raw, "\n")
         del raw
+
 
 if __name__ == "__main__":
     try:

@@ -1,18 +1,7 @@
-"""Module containing message related abstractions."""
-
 from typing import Optional, Union, Dict, Any
-import abc
 
 
-class TmiBaseMessage(abc.ABC):
-    """Base message abstraction for IRC messages with TMI tags."""
-
-    @abc.abstractproperty
-    def valid(self) -> bool:
-        """Return `True` if the message was parsed successfully, otherwise `False`."""
-
-
-class TmiMessage(TmiBaseMessage):
+class Message(object):
     """Message abstraction for IRC messages with TMI tags."""
 
     def __init__(self, message: Union[str, bytes]) -> None:
@@ -62,7 +51,6 @@ class TmiMessage(TmiBaseMessage):
             return
 
         tags_list = tags.split(";")
-
         for tag in tags_list:
             key, value = tag.split("=", 1)
 
@@ -106,13 +94,4 @@ class TmiMessage(TmiBaseMessage):
         return self.__parsed
 
 
-def make_privmsg(channel: str, message: str) -> bytes:
-    """Format and encode an IRC private message."""
-
-    assert len(message) <= 500
-    return "PRIVMSG {} : {}\r\n".format(
-        channel if channel.startswith("#") else "#" + channel, message
-    ).encode()
-
-
-__all__ = ["TmiMessage", "make_privmsg"]
+__all__ = ["Message"]
