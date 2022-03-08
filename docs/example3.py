@@ -21,7 +21,7 @@ async def main(channel: str) -> None:
 
 if __name__ == "__main__":
     try:
-        channel = input("Insert the channel to join: ").lstrip()
+        channel = input("Insert the channel to join: ").strip()
         loop = asyncio.new_event_loop()
         loop.run_until_complete(main(channel))
         loop.run_forever()

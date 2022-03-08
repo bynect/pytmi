@@ -19,9 +19,9 @@ import pytmi
 
 
 async def main() -> None:
-    nick = input("Insert your Twitch nickname: ").lstrip()
-    token = input("Insert your Twitch OAuth token: ").lstrip()
-    channel = input("Insert the channel to join: ").lstrip()
+    nick = input("Insert your Twitch nickname: ").strip()
+    token = input("Insert your Twitch OAuth token: ").strip()
+    channel = input("Insert the channel to join: ").strip()
 
     client = pytmi.Client()
     await client.login_oauth(token, nick)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         print("Something went wrong.")
 ```
 
-You can another find a [usage example](example2.py) inside the `docs` directory.
+You can find others usage example inside the `docs` directory.
 
 ## Bugs
 
