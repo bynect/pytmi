@@ -15,8 +15,11 @@ class Client(object):
     def __init__(
         self,
         use_ssl: bool = True,
-        stream: LineStream = DefaultLineStream(),
+        stream: LineStream = None,
     ) -> None:
+        if stream is None:
+            stream = DefaultLineStream()
+
         self.__stream: LineStream = stream
         self.__use_ssl: bool = use_ssl
 
@@ -51,6 +54,7 @@ class Client(object):
                 await self.__login(token, nick)
                 return
             except Exception as e:
+                # TODO: Fixme, maybe this can be dealt with better
                 if isinstance(e, (ConnectionResetError, ConnectionRefusedError)):
                     raise
 
