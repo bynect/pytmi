@@ -17,21 +17,19 @@ Here's a little application that logs in the user using OAuth, joins the Twitch 
 import asyncio
 import pytmi
 
-
 async def main() -> None:
     nick = input("Insert your Twitch nickname: ").strip()
     token = input("Insert your Twitch OAuth token: ").strip()
     channel = input("Insert the channel to join: ").strip()
 
-    client = pytmi.Client()
-    await client.login_oauth(token, nick)
+    async with pytmi.Client() as client:
+        await client.login_oauth(token, nick, channel)
 
-    await client.join(channel)
-    await client.privmsg("Hello, Twitch!")
+        await client.join(channel)
+        await client.send_message("Hello, Twitch!")
 
-    await client.part(channel)
-    await client.logout()
-
+        await client.part(channel)
+        await client.logout()
 
 if __name__ == "__main__":
     try:
@@ -41,25 +39,33 @@ if __name__ == "__main__":
         print("Something went wrong.")
 ```
 
-You can find others usage example inside the `docs` directory.
+You can find others usage example inside the [`test`](/test) directory.
 
-## Bugs
+## Known bugs
 
-* Warnings with background tasks.
+* Spurious errors when using SSL.
 
-* Error when using SSL.
+* Possible problems with pending tasks (if you don't cleanup them properly).
 
 ## Todos
-
-* Add a way to receive messages and pong every 5 minutes.
 
 * Handle connection and login error in a better way.
 
 * Handle messages that are not correctly encoded in UTF8.
 
-* Initial connection to Twitch server is a little bit slow.
-
 ## Changelog
+
+### v1.0.0
+
+* Major version bump.
+
+* Add a background task that collects messages in a buffer and sends pong as needed.
+
+* Rewrite Client code.
+
+* Change methods name (`part` -> `leave`, `privmsg` -> `send_message`).
+
+* Add async context manager (`async with`) support for Client.
 
 ### v0.3.0
 

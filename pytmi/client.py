@@ -1,65 +1,59 @@
 import asyncio
+import random
 import ssl
-import logging
-from typing import Optional, Union, cast
+import collections
+from typing import Optional, Union
 
-from pytmi.common import *
-from pytmi.stream import *
-from pytmi.message import Message
+def _token(token: str) -> str:
+    assert token.find("\r\n") == -1
+    if token.startswith("oauth:"):
+        return token
+    self = "oauth:" + token
 
+def _nick(nick: str) -> str:
+    assert nick.find("\r\n") == -1
+    return nick.lower()
 
-logger = logging.getLogger(__name__)
+def _channel(channel: str) -> str:
+    assert channel.find("\r\n") == -1
+    if channel.startswith("#"):
+        return channel
+    return "#" + channel.lower()
 
+class Deque(asyncio.Queue):
+    def _init(self, maxsize):
+        self._queue = collections.deque(maxlen=maxsize)
 
 class Client(object):
-    def __init__(
-        self,
-        use_ssl: bool = True,
-        stream: LineStream = None,
-    ) -> None:
-        if stream is None:
-            stream = DefaultLineStream()
-
-        self.__stream: LineStream = stream
-        self.__use_ssl: bool = use_ssl
-
+    def __init__(self, message_buffer_size: int = 1024, use_ssl: bool = False):
+        self.__reader: Optional[asyncio.StreamReader] = None
+        self.__writer: Optional[asyncio.StreamWriter] = None
+        self.__ssl: bool = use_ssl
+        self.__task: Optional[asyncio.Task] = None
+        self.__buffer: Deque = Deque(message_buffer_size)
         self.__logged: bool = False
-        self.__joined: Optional[str] = None
+        self.__channel: Optional[str] = None
 
-    async def login_oauth(
-        self, token: str, nick: str, retry: int = CLIENT_MAX_RETRY
-    ) -> None:
-        if self.__logged:
-            raise ValueError("Alredy logged in")
+    async def login_oauth(self, token: str, nick: str, retry: int = 8, raise_connection_error: bool = False):
+        assert not self.__logged
+        assert retry >= 0
 
-        token = normalize_token(token)
-        nick = normalize_nick(nick)
+        token = _token(token)
+        nick = _nick(nick)
 
         backoff = 0
-        _retry = max(1, retry)
-        errs = []
-
-        while _retry > 0:
-            logger.debug(
-                "Trying to login %i of %i (backoff time %f)",
-                retry - _retry,
-                retry,
-                backoff / 1.5,
-            )
-
+        for t in range(retry + 1):
             try:
-                if not self.__stream.connected:
+                #print("Backoff=", backoff, "Try_n=", t, "Retry=", retry)
+                if self.__writer is None:
                     await self.__connect()
 
+                self.__task = asyncio.create_task(self.__worker(), name="Client __worker")
                 await self.__login(token, nick)
                 return
             except Exception as e:
-                # TODO: Fixme, maybe this can be dealt with better
-                if isinstance(e, (ConnectionResetError, ConnectionRefusedError)):
+                if raise_connection_error or not isinstance(e, (ConnectionResetError, ConnectionRefusedError)):
                     raise
-
-                errs.append(e)
-                logger.debug("While trying to login got exception", exc_info=1)
 
             if backoff <= 1:
                 backoff += 1
@@ -67,136 +61,139 @@ class Client(object):
                 backoff *= 2
 
             await asyncio.sleep(backoff / 1.5)
-            _retry -= 1
 
-        raise LoginError(retry, errs)
+    async def login_anonymous(self, retry: int = 8, raise_connection_error: bool = False):
+        token = "random_string"
+        # NOTE: There is a very small possibility that the random username has already been taken by someone
+        nick = "justinfan" + str(random.randint(12345, 67890))
+        await self.login_oauth(token, nick, retry, raise_connection_error)
 
-    async def login_anonymous(self, retry: int = CLIENT_MAX_RETRY) -> None:
-        await self.login_oauth(*make_anonymous_creds(), retry=retry)
-
-    async def __connect(self) -> None:
-        if self.__use_ssl:
-            await self.__stream.connect(
-                TMI_SERVER, TMI_SERVER_SSLPORT, ssl_ctx=ssl.create_default_context()
+    async def __connect(self):
+        host = "irc.chat.twitch.tv"
+        port = 6667
+        ssl_port = 6697
+        if self.__ssl:
+            self.__reader, self.__writer = await asyncio.open_connection(
+                host, ssl_port, ssl=ssl.create_default_context()
             )
         else:
-            await self.__stream.connect(TMI_SERVER, TMI_SERVER_PORT)
+            self.__reader, self.__writer = await asyncio.open_connection(host, port)
+        self.__logged = True
 
-    async def __login(self, token: str, nick: str) -> None:
-        # Authentication
-        pass_command = "PASS " + token + "\r\n"
-        await self.__stream.write(pass_command.encode())
+    async def __login(self, token, nick):
+        pass_command = f"PASS {token}\r\n"
+        nick_command = f"NICK {nick}\r\n"
 
-        nick_command = "NICK " + nick + "\r\n"
-        await self.__stream.write(nick_command.encode())
+        self.__writer.write(pass_command.encode())
+        self.__writer.write(nick_command.encode())
+        await self.__writer.drain()
 
         # Acknowledgement/test connection
         welcome1 = f":tmi.twitch.tv 001 {nick} :Welcome, GLHF!\r\n"
-        assert await self.__stream.read() == welcome1.encode()
+        assert await self.__message() == welcome1.encode()
 
         welcome2 = f":tmi.twitch.tv 002 {nick} :Your host is tmi.twitch.tv\r\n"
-        assert await self.__stream.read() == welcome2.encode()
+        assert await self.__message() == welcome2.encode()
 
         welcome3 = f":tmi.twitch.tv 003 {nick} :This server is rather new\r\n"
-        assert await self.__stream.read() == welcome3.encode()
+        assert await self.__message() == welcome3.encode()
 
         welcome4 = f":tmi.twitch.tv 004 {nick} :-\r\n"
-        assert await self.__stream.read() == welcome4.encode()
+        assert await self.__message() == welcome4.encode()
 
         welcome5 = f":tmi.twitch.tv 375 {nick} :-\r\n"
-        assert await self.__stream.read() == welcome5.encode()
+        assert await self.__message() == welcome5.encode()
 
         welcome6 = f":tmi.twitch.tv 372 {nick} :You are in a maze of twisty passages, all alike.\r\n"
-        assert await self.__stream.read() == welcome6.encode()
+        assert await self.__message() == welcome6.encode()
 
         welcome7 = f":tmi.twitch.tv 376 {nick} :>\r\n"
-        assert await self.__stream.read() == welcome7.encode()
+        assert await self.__message() == welcome7.encode()
 
         # Capabilities
-        for req, ack in TMI_CAPS:
-            await self.__stream.write(req)
-            assert await self.__stream.read() == ack
+        req = "CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands\r\n".encode()
+        ack = ":tmi.twitch.tv CAP * ACK :twitch.tv/membership twitch.tv/tags twitch.tv/commands\r\n".encode()
 
-        self.__logged = True
-        logger.info("Logged in")
+        await self.__write(req)
+        assert await self.__message() == ack
 
-    async def logout(self) -> None:
-        if not self.__logged:
-            raise ValueError("Not logged in")
+    async def __write(self, it):
+        self.__writer.write(it)
+        await self.__writer.drain()
 
-        if self.__joined is not None:
-            await self.part(self.__joined)
+    async def __message(self):
+        message = await self.__buffer.get()
+        self.__buffer.task_done()
+        return message
 
-        await self.__stream.disconnect()
+    async def __worker(self):
+        ping = b"PING :tmi.twitch.tv\r\n"
+        pong = b"PONG :tmi.twitch.tv\r\n"
+
+        while True:
+            message = await self.__reader.readuntil(b"\r\n")
+            if message == ping:
+                await self.__write(pong)
+            else:
+                self.__buffer.put_nowait(message)
+
+    async def join(self, channel: str):
+        assert self.__logged
+        command = f"JOIN {_channel(channel)}\r\n"
+        await self.__write(command.encode())
+        self.__channel = channel
+
+    async def leave(self, channel: Optional[str] = None):
+        assert self.__logged
+        channel = channel if channel is not None else self.__channel
+        assert channel is not None
+
+        command = f"PART {_channel(channel)}\r\n"
+        await self.__write(command.encode())
+        self.__channel = None
+
+    async def logout(self):
+        assert self.__logged
+
+        if self.__channel is not None:
+            await self.part()
+
+        self.__task.cancel()
+        self.__writer.close()
+        await self.__writer.wait_closed()
 
         self.__logged = False
-        logger.info("Logged out")
+        self.__task = None
 
-    async def join(self, channel: str) -> None:
-        if not self.__logged:
-            raise ValueError("Not logged in")
+    async def get_message(self, raw: bool = False) -> Union[str, bytes]:
+        assert self.__logged
+        assert self.__channel is not None
+        if raw:
+            return await self.__message()
 
-        channel = normalize_channel(channel)
-        command = "JOIN " + channel + "\r\n"
-        await self.__stream.write(command.encode())
+        return (await self.__message()).decode()
 
-        self.__joined = channel
-        logger.info("Joined channel %s", channel)
-
-    async def part(self, channel: Optional[str] = None) -> None:
-        if not self.__logged:
-            raise ValueError("Not logged in")
-
-        if channel is None:
-            channel = self.__joined
-            if channel is None:
-                raise AttributeError("Unspecified channel to part")
-
+    async def send_message(self, message: str, channel: Optional[str] = None):
+        assert self.__logged
+        channel = channel if channel is not None else self.__channel
         assert channel is not None
-        channel = cast(str, normalize_channel(channel))
 
-        command = "PART " + channel + "\r\n"
-        await self.__stream.write(command.encode())
-        self.__joined = None
+        assert len(message) <= 500
+        command = f"PRIVMSG {_channel(channel)} : {message}\r\n"
+        await self.__write(command.encode())
 
-        logger.info("Parted channel %s", channel)
+    async def __aenter__(self):
+        return self
 
-    async def privmsg(self, message: str, channel: Optional[str] = None) -> None:
-        if not self.__logged:
-            raise AttributeError("Not logged in")
-
-        if channel is None:
-            channel = self.__joined
-
-        assert channel is not None
-        channel = cast(str, normalize_channel(channel))
-
-        await self.__stream.write(make_privmsg(channel, message))
-        logger.debug("Sent a privmsg to channel %s", channel)
-
-    async def get_message(self) -> Message:
-        message = await self.get_message_raw()
-        return Message(message)
-
-    async def get_message_raw(self) -> bytes:
-        if not self.__logged:
-            raise AttributeError("Not logged in")
-
-        line = await self.__stream.read()
-
-        if line == TMI_PING_MESSAGE:
-            await self.__stream.write(TMI_PONG_MESSAGE)
-            line = await self.__stream.read()
-
-        return line
+    async def __aexit__(self, *args):
+        await self.logout()
 
     @property
     def logged(self) -> bool:
         return self.__logged
 
     @property
-    def joined(self) -> Optional[str]:
-        return self.__joined
-
+    def channel(self) -> Optional[str]:
+        return self.__channel
 
 __all__ = ["Client"]
