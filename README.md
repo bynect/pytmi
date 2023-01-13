@@ -24,12 +24,8 @@ async def main() -> None:
 
     async with pytmi.Client() as client:
         await client.login_oauth(token, nick, channel)
-
         await client.join(channel)
         await client.send_message("Hello, Twitch!")
-
-        await client.part(channel)
-        await client.logout()
 
 if __name__ == "__main__":
     try:
