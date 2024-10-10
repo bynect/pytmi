@@ -10,7 +10,7 @@ async def main() -> None:
         await client.login_oauth(token, nick, channel)
         await client.join(channel)
         await client.send_message("Hello, Twitch!")
-        await client.part(channel)
+        await client.leave(channel)
 
 if __name__ == "__main__":
     try:
